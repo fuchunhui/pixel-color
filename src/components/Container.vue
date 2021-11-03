@@ -1,17 +1,69 @@
 <script setup lang="ts">
-import {toRefs, Ref, ref, onMounted, watch, computed, provide} from 'vue';
+import {ref, onMounted, watch, computed, nextTick} from 'vue';
 import {ColorButton, ColorFileUpload} from './common';
-import {PropertyValue, BaseFile} from '../types';
+import {BaseFile} from '../types';
 
-const fileChange = ({name, base64}: BaseFile) => {
-  console.log(name, base64);
+const noImage = ref(true);
+const width = ref(0);
+const height = ref(0);
+const title = ref('');
+const img = new Image();
+const canvas = document.createElement('canvas');
+const uint8 = ref<Uint8ClampedArray | null>();
+
+const createImage = () => {
+  img.onload = async () => {
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+
+    width.value = canvas.width;
+    height.value = canvas.height;
+
+    computedData();
+  };
+
+  img.onerror = err => {
+    console.error(err);
+  };
 };
 
-const reset = () => {
-  console.log('reset..');
-}
+const computedData = () => {
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  ctx.drawImage(img, 0, 0);
+  const rgba = ctx.getImageData(0, 0, img.naturalWidth, img.naturalHeight).data;
+  uint8.value = rgba;
+};
 
-const localTitle = ref('0'); // width height color 占比
+const fileChange = ({name, base64}: BaseFile) => {
+  title.value = name;
+  img.src = base64;
+};
+
+watch(uint8, (nv) => {
+  if (noImage.value) {
+    noImage.value = false;
+    console.log(uint8.value);
+  }
+});
+
+const reset = async () => {
+  uint8.value = new Uint8ClampedArray();
+  await nextTick();
+  noImage.value = true;
+  title.value = '';
+  width.value = 0;
+  height.value = 0;
+};
+
+const localTitle = computed(() => {
+  return noImage.value
+    ? '整一张图片上来吧'
+    : `${title.value} ${width.value} * ${height.value}`;  // width height color 占比
+});
+
+onMounted(() => {
+  createImage();
+});
 
 </script>
 
@@ -20,7 +72,7 @@ const localTitle = ref('0'); // width height color 占比
     <div class="container-header">
       {{ localTitle }}
     </div>
-    <div class="container-wall" v-if="true">
+    <div class="container-wall" v-if="noImage">
       <color-file-upload @change="fileChange"/>
     </div>
     <div class="container-wraper" v-else>
