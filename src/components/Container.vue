@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref, onMounted, watch, computed, nextTick} from 'vue';
 import {ColorButton, ColorFileUpload} from './common';
+import PixelImage from './PixelImage.vue';
 import {BaseFile} from '../types';
 
 const noImage = ref(true);
@@ -9,7 +10,7 @@ const height = ref(0);
 const title = ref('');
 const img = new Image();
 const canvas = document.createElement('canvas');
-const uint8 = ref<Uint8ClampedArray | null>();
+const uint8 = ref<Uint8ClampedArray>(new Uint8ClampedArray());
 
 const createImage = () => {
   img.onload = async () => {
@@ -42,7 +43,6 @@ const fileChange = ({name, base64}: BaseFile) => {
 watch(uint8, (nv) => {
   if (noImage.value) {
     noImage.value = false;
-    console.log(uint8.value);
   }
 });
 
@@ -76,7 +76,7 @@ onMounted(() => {
       <color-file-upload @change="fileChange"/>
     </div>
     <div class="container-wraper" v-else>
-      <canvas class="container-canvas" ref="canvasRef"/>
+      <pixel-image :uint8="uint8" :width="width" :height="height"/>
     </div>
     <footer class="container-footer">
       <color-button label="重置" u="primary" @click="reset"/>
