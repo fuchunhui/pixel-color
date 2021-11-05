@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import {ref, onMounted, watch, computed, nextTick} from 'vue';
+import {ref, onMounted, computed} from 'vue';
 import {ColorButton, ColorFileUpload} from './common';
-import PixelImage from './PixelImage.vue';
 import {BaseFile} from '../types';
 
 const noImage = ref(true);
@@ -10,13 +9,19 @@ const height = ref(0);
 const title = ref('');
 const img = new Image();
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const showLayer = ref(false);
+const layerRef = ref<HTMLCanvasElement | null>(null);
+const hoverColor = ref('#3F3F3F');
+const activeColor = ref('#3F3F3F');
+
+const dw = 100;
+const dh = 100;
 
 const createImage = () => {
-  img.onload = async () => {
+  img.onload = () => {
     const canvas = canvasRef.value as HTMLCanvasElement;
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
-
     width.value = img.naturalWidth;
     height.value = img.naturalHeight;
 
@@ -40,34 +45,49 @@ const convert = (imageData: ImageData) => {
   return rgba;
 };
 
+const mousemove = async (event: MouseEvent) => {
+  const {offsetX, offsetY} = event;
+  if (offsetX < 0 || offsetY < 0) {
+    return;
+  }
+
+  showLayer.value = true;
+  drawLayer(offsetX, offsetY);
+  // 移动位置
+
+  const color = computedData(offsetX, offsetY);
+  hoverColor.value = color;
+};
+
+const drawLayer = (x: number, y: number) => {
+  const canvas = canvasRef.value as HTMLCanvasElement;
+  const targetCanvas = layerRef.value as HTMLCanvasElement;
+  const ctx = targetCanvas.getContext('2d') as CanvasRenderingContext2D;
+  const sx = Math.min(Math.max(0, x - 5), canvas.width - 10);
+  const sy = Math.min(Math.max(0, y - 5), canvas.height - 10);
+  ctx.drawImage(canvas, sx, sy, 10, 10, 0, 0, dw, dh);
+};
+
+const mouseleave = () => {
+  showLayer.value = false;
+  hoverColor.value = '#3F3F3F';
+};
+
+const click = (event: MouseEvent) => {
+  const {offsetX, offsetY} = event;
+  if (offsetX < 0 || offsetY < 0) {
+    return;
+  }
+
+  const color = computedData(offsetX, offsetY);
+  activeColor.value = color;
+};
+
 const computedData = (x: number, y: number) => {
   const canvas = canvasRef.value as HTMLCanvasElement;
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   const imageData = ctx.getImageData(x, y, 1, 1);
   return convert(imageData);
-};
-
-const mousemove = (event: MouseEvent) => {
-//   const {clientX, clientY, offsetX, offsetY} = event;
-//   console.log(clientX, clientY, offsetX, offsetY);
-
-  // 添加浮层
-
-  const color = pickColor(event);
-  console.log('mousemove: ', color);
-};
-
-const click = (event: MouseEvent) => {
-  const color = pickColor(event);
-  console.log('click: ', color);
-};
-
-const pickColor = (event: MouseEvent) => {
-  const {offsetX, offsetY} = event;
-  if (offsetX < 0 || offsetY < 0) {
-    return;
-  }
-  return computedData(offsetX, offsetY);
 };
 
 const fileChange = ({name, base64}: BaseFile) => {
@@ -76,18 +96,20 @@ const fileChange = ({name, base64}: BaseFile) => {
   img.src = base64;
 };
 
-const reset = async () => {
-  await nextTick(); // TODO check 是否移除
+const reset = () => {
   noImage.value = true;
+  showLayer.value = false;
   title.value = '';
   width.value = 0;
   height.value = 0;
+  hoverColor.value = '#3F3F3F';
+  activeColor.value = '#3F3F3F';
 };
 
 const localTitle = computed(() => {
   return noImage.value
     ? '整一张图片上来吧'
-    : `${title.value} ${width.value} * ${height.value}`;  // width height color 占比
+    : `${title.value} ${width.value} * ${height.value}`;
 });
 
 onMounted(() => {
@@ -98,8 +120,19 @@ onMounted(() => {
 
 <template>
   <div class="container">
-    <div class="container-header">
-      {{ localTitle }}
+    <div
+      class="container-header"
+      :style="{
+        color: hoverColor
+      }"
+    >
+      <p>{{ localTitle }}</p>
+      <div
+        class="container-active"
+        :style="{
+          backgroundColor: activeColor
+        }"
+      />
     </div>
     <div class="container-wall" v-if="noImage">
       <color-file-upload @change="fileChange"/>
@@ -108,7 +141,14 @@ onMounted(() => {
       <canvas
         ref="canvasRef"
         @mousemove="mousemove"
+        @mouseleave="mouseleave"
         @click="click"
+      />
+      <canvas
+        v-show="showLayer"
+        :width="dw"
+        :height="dh"
+        ref="layerRef"
       />
     </div>
     <footer class="container-footer">
@@ -138,8 +178,13 @@ onMounted(() => {
     border-radius: 4px;
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 10%);
     font-size: 16px;
-    color: #3f3f3f;
+    color: #3F3F3F;
     font-weight: 500;
+  }
+  &-active {
+    width: 64px;
+    height: 22px;
+    margin-left: 10px;
   }
   &-wraper,
   &-wall {
@@ -158,7 +203,6 @@ onMounted(() => {
     height: 64px;
     flex-shrink: 0;
     .flex-center();
-
     .color-button {
       width: 130px;
     }
