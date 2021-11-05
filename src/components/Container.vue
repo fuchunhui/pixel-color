@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref, onMounted, computed} from 'vue';
+import {ref, onMounted, computed, watch} from 'vue';
 import {ColorButton, ColorFileUpload} from './common';
 import {BaseFile} from '../types';
 
@@ -13,6 +13,7 @@ const showLayer = ref(false);
 const layerRef = ref<HTMLCanvasElement | null>(null);
 const hoverColor = ref('#3F3F3F');
 const activeColor = ref('#3F3F3F');
+const showHEX = ref(false);
 
 const DW = 100;
 const DH = 100;
@@ -41,9 +42,14 @@ const renderImage = () => {
 };
 
 const convert = (imageData: ImageData) => {
-  const {data} = imageData;
-  const rgba = `rgba(${data[0]}, ${data[1]}, ${data[2]}, ${data[3] / 255})`;
-  return rgba;
+  const {0: r, 1: g, 2: b, 3: a} = imageData.data;
+  return `rgba(${r}, ${g}, ${b}, ${a / 255})`;
+};
+
+const hexConvert = (imageData: ImageData) => {
+  const hex = (num: number) => num.toString(16);
+  const {0: r, 1: g, 2: b, 3: a} = imageData.data;
+  return `#${hex(r)}${hex(g)}${hex(b)}${hex(a)}`.toUpperCase();
 };
 
 const mousemove = async (event: MouseEvent) => {
@@ -90,8 +96,20 @@ const computedData = (x: number, y: number) => {
   const canvas = canvasRef.value as HTMLCanvasElement;
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   const imageData = ctx.getImageData(x, y, 1, 1);
-  return convert(imageData);
+  return showHEX.value ? hexConvert(imageData) : convert(imageData);
 };
+
+const copy = (color: string) => {
+  navigator.clipboard.writeText(color).then(res => {
+    console.log(`${color} 复制成功`);
+  }).catch(error => {
+    console.error(error);
+  });
+};
+
+watch(activeColor, nv => {
+  copy(nv);
+});
 
 const fileChange = ({name, base64}: BaseFile) => {
   noImage.value = false;
