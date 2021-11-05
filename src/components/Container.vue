@@ -13,11 +13,21 @@ const showLayer = ref(false);
 const layerRef = ref<HTMLCanvasElement | null>(null);
 const hoverColor = ref('#3F3F3F');
 const activeColor = ref('#3F3F3F');
-const showHEX = ref(false);
+const showHEX = ref(true);
 
-const DW = 100;
-const DH = 100;
-const OFFSET = 5;
+const SIZE = 11;
+const SCALE = 14;
+const DW = SCALE * SIZE;
+const DH = SCALE * SIZE;
+const OFFSET = SCALE;
+const points = (() => {
+  const list = [];
+  for (let i = 0; i <= SIZE; i++) {
+    list.push([i, 0, i, SIZE]);
+    list.push([0, i, SIZE, i]);
+  }
+  return list.map(item => item.map(num => num * SCALE));
+})();
 
 const createImage = () => {
   img.onload = () => {
@@ -72,9 +82,36 @@ const drawLayer = (x: number, y: number) => {
   targetCanvas.style.top = `${y + OFFSET}px`;
 
   const ctx = targetCanvas.getContext('2d') as CanvasRenderingContext2D;
-  const sx = Math.min(Math.max(0, x - 5), canvas.width - 10);
-  const sy = Math.min(Math.max(0, y - 5), canvas.height - 10);
-  ctx.drawImage(canvas, sx, sy, 10, 10, 0, 0, DW, DH);
+  const sx = Math.min(Math.max(0, x - 6), canvas.width - SIZE);
+  const sy = Math.min(Math.max(0, y - 6), canvas.height - SIZE);
+  ctx.drawImage(canvas, sx, sy, SIZE, SIZE, 0, 0, DW, DH);
+  drawGrid(ctx);
+};
+
+const drawGrid = (ctx: CanvasRenderingContext2D) => {
+  ctx.beginPath(); // TODO 检查一下beginPath/stroke等用法准确性
+  ctx.fillStyle = '#FFFFFF05';
+  ctx.strokeStyle ='#000000';
+  ctx.fillRect(0, 0, SIZE * SCALE, SIZE * SCALE);
+
+  ctx.strokeStyle ='#6D7D67';
+  points.forEach(item => {
+    const {0: sx, 1: sy, 2: dx, 3: dy} = item;
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(dx, dy);
+  });
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.strokeStyle ='#484E4A';
+  ctx.arc(SIZE * SCALE / 2, SIZE * SCALE / 2, SIZE * SCALE / 2, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#FF0000';
+  ctx.rect((SIZE - 1) * SCALE / 2, (SIZE - 1) * SCALE / 2, 1 * SCALE, 1 * SCALE);
+  ctx.stroke();
+
 };
 
 const mouseleave = () => {
@@ -222,6 +259,7 @@ onMounted(() => {
   }
   &-wraper {
     overflow: auto;
+    cursor: pointer;
   }
   &-area {
     position: relative;
