@@ -9,18 +9,18 @@ const width = ref(0);
 const height = ref(0);
 const title = ref('');
 const img = new Image();
-const canvas = document.createElement('canvas');
-const uint8 = ref<Uint8ClampedArray>(new Uint8ClampedArray());
+const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 const createImage = () => {
   img.onload = async () => {
+    const canvas = canvasRef.value as HTMLCanvasElement;
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
 
-    width.value = canvas.width;
-    height.value = canvas.height;
+    width.value = img.naturalWidth;
+    height.value = img.naturalHeight;
 
-    computedData();
+    renderImage();
   };
 
   img.onerror = err => {
@@ -28,27 +28,56 @@ const createImage = () => {
   };
 };
 
-const computedData = () => {
+const renderImage = () => {
+  const canvas = canvasRef.value as HTMLCanvasElement;
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   ctx.drawImage(img, 0, 0);
-  const rgba = ctx.getImageData(0, 0, img.naturalWidth, img.naturalHeight).data;
-  uint8.value = rgba;
+};
+
+const convert = (imageData: ImageData) => {
+  const {data} = imageData;
+  const rgba = `rgba(${data[0]}, ${data[1]}, ${data[2]}, ${data[3] / 255})`;
+  return rgba;
+};
+
+const computedData = (x: number, y: number) => {
+  const canvas = canvasRef.value as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  const imageData = ctx.getImageData(x, y, 1, 1);
+  return convert(imageData);
+};
+
+const mousemove = (event: MouseEvent) => {
+//   const {clientX, clientY, offsetX, offsetY} = event;
+//   console.log(clientX, clientY, offsetX, offsetY);
+
+  // 添加浮层
+
+  const color = pickColor(event);
+  console.log('mousemove: ', color);
+};
+
+const click = (event: MouseEvent) => {
+  const color = pickColor(event);
+  console.log('click: ', color);
+};
+
+const pickColor = (event: MouseEvent) => {
+  const {offsetX, offsetY} = event;
+  if (offsetX < 0 || offsetY < 0) {
+    return;
+  }
+  return computedData(offsetX, offsetY);
 };
 
 const fileChange = ({name, base64}: BaseFile) => {
+  noImage.value = false;
   title.value = name;
   img.src = base64;
 };
 
-watch(uint8, (nv) => {
-  if (noImage.value) {
-    noImage.value = false;
-  }
-});
-
 const reset = async () => {
-  uint8.value = new Uint8ClampedArray();
-  await nextTick();
+  await nextTick(); // TODO check 是否移除
   noImage.value = true;
   title.value = '';
   width.value = 0;
@@ -76,7 +105,11 @@ onMounted(() => {
       <color-file-upload @change="fileChange"/>
     </div>
     <div class="container-wraper" v-else>
-      <pixel-image :uint8="uint8" :width="width" :height="height"/>
+      <canvas
+        ref="canvasRef"
+        @mousemove="mousemove"
+        @click="click"
+      />
     </div>
     <footer class="container-footer">
       <color-button label="重置" u="primary" @click="reset"/>
@@ -110,6 +143,7 @@ onMounted(() => {
   }
   &-wraper,
   &-wall {
+    flex: 1;
     position: relative;
     height: 100%;
     padding: 10px;
@@ -117,8 +151,12 @@ onMounted(() => {
     border-radius: 3px;
     overflow: hidden;
   }
+  &-wraper {
+    overflow: auto;
+  }
   &-footer {
     height: 64px;
+    flex-shrink: 0;
     .flex-center();
 
     .color-button {
