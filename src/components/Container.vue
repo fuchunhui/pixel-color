@@ -14,8 +14,9 @@ const layerRef = ref<HTMLCanvasElement | null>(null);
 const hoverColor = ref('#3F3F3F');
 const activeColor = ref('#3F3F3F');
 
-const dw = 100;
-const dh = 100;
+const DW = 100;
+const DH = 100;
+const OFFSET = 5;
 
 const createImage = () => {
   img.onload = () => {
@@ -53,7 +54,6 @@ const mousemove = async (event: MouseEvent) => {
 
   showLayer.value = true;
   drawLayer(offsetX, offsetY);
-  // 移动位置
 
   const color = computedData(offsetX, offsetY);
   hoverColor.value = color;
@@ -62,10 +62,13 @@ const mousemove = async (event: MouseEvent) => {
 const drawLayer = (x: number, y: number) => {
   const canvas = canvasRef.value as HTMLCanvasElement;
   const targetCanvas = layerRef.value as HTMLCanvasElement;
+  targetCanvas.style.left = `${x + OFFSET}px`;
+  targetCanvas.style.top = `${y + OFFSET}px`;
+
   const ctx = targetCanvas.getContext('2d') as CanvasRenderingContext2D;
   const sx = Math.min(Math.max(0, x - 5), canvas.width - 10);
   const sy = Math.min(Math.max(0, y - 5), canvas.height - 10);
-  ctx.drawImage(canvas, sx, sy, 10, 10, 0, 0, dw, dh);
+  ctx.drawImage(canvas, sx, sy, 10, 10, 0, 0, DW, DH);
 };
 
 const mouseleave = () => {
@@ -138,18 +141,21 @@ onMounted(() => {
       <color-file-upload @change="fileChange"/>
     </div>
     <div class="container-wraper" v-else>
-      <canvas
-        ref="canvasRef"
-        @mousemove="mousemove"
-        @mouseleave="mouseleave"
-        @click="click"
-      />
-      <canvas
-        v-show="showLayer"
-        :width="dw"
-        :height="dh"
-        ref="layerRef"
-      />
+      <div class="container-area">
+        <canvas
+          ref="canvasRef"
+          @mousemove="mousemove"
+          @mouseleave="mouseleave"
+          @click="click"
+        />
+        <canvas
+          v-show="showLayer"
+          ref="layerRef"
+          class="container-layer"
+          :width="DW"
+          :height="DH"
+        />
+      </div>
     </div>
     <footer class="container-footer">
       <color-button label="重置" u="primary" @click="reset"/>
@@ -198,6 +204,12 @@ onMounted(() => {
   }
   &-wraper {
     overflow: auto;
+  }
+  &-area {
+    position: relative;
+  }
+  &-layer {
+    position: absolute;
   }
   &-footer {
     height: 64px;
