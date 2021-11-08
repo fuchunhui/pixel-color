@@ -15,14 +15,14 @@ const hoverColor = ref('#3F3F3F');
 const activeColor = ref('#3F3F3F');
 const showHEX = ref(true);
 
-const SIZE = 11;
-const SCALE = 14;
+const SIZE = 11; // 显示格子数
+const SCALE = 14; // 倍数
 const DW = SCALE * SIZE;
 const DH = SCALE * SIZE;
 const OFFSET = SCALE;
 const points = (() => {
   const list = [];
-  for (let i = 0; i <= SIZE; i++) {
+  for (let i = 1; i < SIZE; i++) {
     list.push([i, 0, i, SIZE]);
     list.push([0, i, SIZE, i]);
   }
@@ -82,19 +82,24 @@ const drawLayer = (x: number, y: number) => {
   targetCanvas.style.top = `${y + OFFSET}px`;
 
   const ctx = targetCanvas.getContext('2d') as CanvasRenderingContext2D;
-  const sx = Math.min(Math.max(0, x - 6), canvas.width - SIZE);
-  const sy = Math.min(Math.max(0, y - 6), canvas.height - SIZE);
+  const sx = Math.min(Math.max(0, x - 5), canvas.width - SIZE);
+  const sy = Math.min(Math.max(0, y - 5), canvas.height - SIZE);
+
+  ctx.clearRect(0, 0, DW, DH);
   ctx.drawImage(canvas, sx, sy, SIZE, SIZE, 0, 0, DW, DH);
   drawGrid(ctx);
 };
 
 const drawGrid = (ctx: CanvasRenderingContext2D) => {
-  ctx.beginPath(); // TODO 检查一下beginPath/stroke等用法准确性
-  ctx.fillStyle = '#FFFFFF05';
+  ctx.imageSmoothingEnabled = false;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
   ctx.strokeStyle ='#000000';
-  ctx.fillRect(0, 0, SIZE * SCALE, SIZE * SCALE);
+  ctx.arc(SIZE * SCALE / 2, SIZE * SCALE / 2, SIZE * SCALE / 2 - 1, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.clip();
 
-  ctx.strokeStyle ='#6D7D67';
+  ctx.strokeStyle = '#D6D6D6';
   points.forEach(item => {
     const {0: sx, 1: sy, 2: dx, 3: dy} = item;
     ctx.moveTo(sx, sy);
@@ -103,15 +108,9 @@ const drawGrid = (ctx: CanvasRenderingContext2D) => {
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.strokeStyle ='#484E4A';
-  ctx.arc(SIZE * SCALE / 2, SIZE * SCALE / 2, SIZE * SCALE / 2, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.beginPath();
   ctx.strokeStyle = '#FF0000';
-  ctx.rect((SIZE - 1) * SCALE / 2, (SIZE - 1) * SCALE / 2, 1 * SCALE, 1 * SCALE);
+  ctx.rect((SIZE - 1) * SCALE / 2, (SIZE - 1) * SCALE / 2, 1 * SCALE, 1 * SCALE); // 红点固定到圆心，对于源canvas的边缘像素，圆心值和实际值就不匹配，可通过把源canvas再封装一层解决，不计划调整。
   ctx.stroke();
-
 };
 
 const mouseleave = () => {
@@ -207,6 +206,9 @@ onMounted(() => {
           v-show="showLayer"
           ref="layerRef"
           class="container-layer"
+          :style="{
+            borderRadius: `${SIZE * SCALE}px`
+          }"
           :width="DW"
           :height="DH"
         />
